@@ -53,6 +53,22 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model BlogPost {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  slug        String   @unique
+  description String   @default("")
+  content     String   @default("")
+  imageUrl    String   @default("")
+  tags        String   // JSON stringified string[]
+  status      String   @default("draft")
+  publishedAt DateTime?
+
+  @@map("blog_posts")
+}
+
 model AdminUser {
   id           String @id @default(uuid())
   email        String @unique

@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import { authRouter } from './routes/auth';
 import { receiptsRouter } from './routes/receipts';
 import { auditRouter } from './routes/audit';
+import { blogsRouter } from './routes/blogs';
 import { errorHandler } from './middleware/errorHandler';
 
 export const app = express();
@@ -41,6 +42,7 @@ app.get('/', (_req, res) => {
 app.use('/api/admin/auth', authRouter);
 app.use('/api/receipts', receiptsRouter);
 app.use('/api/admin/audit', auditRouter);
+app.use('/api/blogs', blogsRouter);
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use(errorHandler);
