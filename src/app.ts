@@ -39,6 +39,10 @@ app.get('/', (_req, res) => {
   res.json({ status: 'ok', app: 'Code Heaven Studio API' });
 });
 
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
 app.use('/api/admin/auth', authRouter);
 app.use('/api/receipts', receiptsRouter);
 app.use('/api/admin/audit', auditRouter);
