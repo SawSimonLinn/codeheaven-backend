@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { createToken, verifyToken } from '../services/token.service';
@@ -20,28 +20,32 @@ function setSessionCookie(res: Response, token: string): void {
 }
 
 // POST /api/admin/auth/login
-authRouter.post('/login', async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body as { email?: string; password?: string };
+authRouter.post('/login', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { email, password } = req.body as { email?: string; password?: string };
 
-  if (!email || !password) {
-    res.status(400).json({ error: 'Email and password are required' });
-    return;
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
+    }
+
+    const admin = await prisma.adminUser.findUnique({ where: { email } });
+
+    if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const token = createToken(admin.email);
+    setSessionCookie(res, token);
+
+    // Fire-and-forget audit log
+    void logAudit(req, { event: 'login', email: admin.email });
+
+    res.json({ user: { email: admin.email, name: admin.name } });
+  } catch (err) {
+    next(err);
   }
-
-  const admin = await prisma.adminUser.findUnique({ where: { email } });
-
-  if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
-    res.status(401).json({ error: 'Invalid credentials' });
-    return;
-  }
-
-  const token = createToken(admin.email);
-  setSessionCookie(res, token);
-
-  // Fire-and-forget audit log
-  void logAudit(req, { event: 'login', email: admin.email });
-
-  res.json({ user: { email: admin.email, name: admin.name } });
 });
 
 // POST /api/admin/auth/logout
@@ -53,27 +57,31 @@ authRouter.post('/logout', requireAuth, async (req: AuthRequest, res: Response):
 });
 
 // GET /api/admin/auth/session
-authRouter.get('/session', async (req: Request, res: Response): Promise<void> => {
-  const token = req.cookies?.[COOKIE_NAME] as string | undefined;
+authRouter.get('/session', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const token = req.cookies?.[COOKIE_NAME] as string | undefined;
 
-  if (!token) {
-    res.status(401).json({ error: 'No session' });
-    return;
+    if (!token) {
+      res.status(401).json({ error: 'No session' });
+      return;
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      res.status(401).json({ error: 'Session expired or invalid' });
+      return;
+    }
+
+    const admin = await prisma.adminUser.findUnique({ where: { email: payload.email } });
+    if (!admin) {
+      res.status(401).json({ error: 'Admin not found' });
+      return;
+    }
+
+    res.json({ user: { email: admin.email, name: admin.name } });
+  } catch (err) {
+    next(err);
   }
-
-  const payload = verifyToken(token);
-  if (!payload) {
-    res.status(401).json({ error: 'Session expired or invalid' });
-    return;
-  }
-
-  const admin = await prisma.adminUser.findUnique({ where: { email: payload.email } });
-  if (!admin) {
-    res.status(401).json({ error: 'Admin not found' });
-    return;
-  }
-
-  res.json({ user: { email: admin.email, name: admin.name } });
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

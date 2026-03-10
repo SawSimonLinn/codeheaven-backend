@@ -1,0 +1,566 @@
+{
+  "info": {
+    "name": "Code Heaven Studio API",
+    "description": "Complete API collection for Code Heaven Studio backend.\n\nBase URL: https://codeheaven-backend.onrender.com\n\n## Setup\n1. Import this collection\n2. Run 'GET / - Health Check' first (Render free tier may be sleeping — wait for it)\n3. Run 'POST Login' — the session cookie is auto-saved to the `sessionCookie` variable\n4. All authenticated requests will automatically send the cookie via the Cookie header\n\n## Notes\n- The `blogId` and `receiptId` variables are auto-populated from Create responses\n- Cookie is saved as collection variable `sessionCookie` by the Login test script",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://codeheaven-backend.onrender.com",
+      "type": "string"
+    },
+    {
+      "key": "sessionCookie",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "blogId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "receiptId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "GET / - Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Returns API status. Run this first if the server was sleeping on Render.\nExpected: { status: 'ok', app: 'Code Heaven Studio API' }"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/admin/auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Auto-save the session cookie to a collection variable",
+                  "const cookieHeader = pm.response.headers.get('Set-Cookie');",
+                  "if (cookieHeader) {",
+                  "    const match = cookieHeader.match(/chs_admin_session=([^;]+)/);",
+                  "    if (match) {",
+                  "        pm.collectionVariables.set('sessionCookie', 'chs_admin_session=' + match[1]);",
+                  "        console.log('Session cookie saved:', match[1].substring(0, 20) + '...');",
+                  "    }",
+                  "}",
+                  "",
+                  "// Also try Postman cookie jar",
+                  "const jar = pm.cookies.toObject();",
+                  "if (jar['chs_admin_session']) {",
+                  "    pm.collectionVariables.set('sessionCookie', 'chs_admin_session=' + jar['chs_admin_session']);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"your-password\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auth", "login"]
+            },
+            "description": "Login with email and password.\n\nThe test script automatically extracts the `chs_admin_session` cookie and saves it to the `sessionCookie` collection variable. All authenticated requests below will use this."
+          }
+        },
+        {
+          "name": "POST /api/admin/auth/logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('sessionCookie', '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auth", "logout"]
+            },
+            "description": "Logout and clear the session. Clears the sessionCookie variable on success."
+          }
+        },
+        {
+          "name": "GET /api/admin/auth/session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auth/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "auth", "session"]
+            },
+            "description": "Verify the current session. Returns user object if the session cookie is valid."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blogs - Public",
+      "item": [
+        {
+          "name": "GET /api/blogs/public - All Published Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/public",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "public"]
+            },
+            "description": "Get all published blog posts ordered by publishedAt descending. No auth required."
+          }
+        },
+        {
+          "name": "GET /api/blogs/slug/:slug - Post by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/slug/my-first-post",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "slug", "my-first-post"]
+            },
+            "description": "Get a single published blog post by its slug. Replace 'my-first-post' with a real slug. Returns 404 if not found."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blogs - Admin",
+      "item": [
+        {
+          "name": "GET /api/blogs - List All Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "description": "Filter by status: draft | published",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all blog posts. Optionally filter by ?status=draft or ?status=published. Requires auth."
+          }
+        },
+        {
+          "name": "POST /api/blogs - Create Post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Auto-save the new blog post ID",
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    try {",
+                  "        const json = pm.response.json();",
+                  "        const id = json.id || json.$id || json._id;",
+                  "        if (id) {",
+                  "            pm.collectionVariables.set('blogId', id);",
+                  "            console.log('blogId saved:', id);",
+                  "        }",
+                  "    } catch(e) {}",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My New Blog Post\",\n  \"description\": \"A short description of the post.\",\n  \"content\": \"<p>Full content goes here.</p>\",\n  \"imageUrl\": \"https://example.com/image.jpg\",\n  \"tags\": [\"javascript\", \"tutorial\"],\n  \"status\": \"draft\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs"]
+            },
+            "description": "Create a new blog post. `title` is required. Slug is auto-generated from title.\n\nThe test script auto-saves the returned ID to `blogId`."
+          }
+        },
+        {
+          "name": "GET /api/blogs/:id - Get Post by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "{{blogId}}"]
+            },
+            "description": "Get a single blog post by ID. Uses the `blogId` variable (auto-set by Create Post)."
+          }
+        },
+        {
+          "name": "PUT /api/blogs/:id - Update Post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Blog Post Title\",\n  \"description\": \"Updated description.\",\n  \"content\": \"<p>Updated content.</p>\",\n  \"imageUrl\": \"https://example.com/new-image.jpg\",\n  \"tags\": [\"updated\", \"tag\"],\n  \"status\": \"published\",\n  \"publishedAt\": \"2024-01-15T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "{{blogId}}"]
+            },
+            "description": "Update an existing blog post. All fields optional. Slug auto-regenerates if title changes."
+          }
+        },
+        {
+          "name": "PATCH /api/blogs/:id/status - Change Post Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"published\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/{{blogId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "{{blogId}}", "status"]
+            },
+            "description": "Change post status to 'draft' or 'published'."
+          }
+        },
+        {
+          "name": "DELETE /api/blogs/:id - Delete Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "{{blogId}}"]
+            },
+            "description": "Delete a blog post by ID. Returns 204 on success."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Receipts",
+      "item": [
+        {
+          "name": "GET /api/receipts - List All Receipts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/receipts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "receipts"]
+            },
+            "description": "Get all receipts with total count, ordered by createdAt descending."
+          }
+        },
+        {
+          "name": "POST /api/receipts - Create Receipt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Auto-save the new receipt ID",
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    try {",
+                  "        const json = pm.response.json();",
+                  "        const id = json.id || json.$id || json._id;",
+                  "        if (id) {",
+                  "            pm.collectionVariables.set('receiptId', id);",
+                  "            console.log('receiptId saved:', id);",
+                  "        }",
+                  "    } catch(e) {}",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"John Doe\",\n  \"clientEmail\": \"john@example.com\",\n  \"companyName\": \"Acme Corp\",\n  \"issueDate\": \"2024-01-15\",\n  \"dueDate\": \"2024-02-15\",\n  \"items\": \"[{\\\"description\\\":\\\"Web Development\\\",\\\"quantity\\\":1,\\\"rate\\\":1500,\\\"amount\\\":1500}]\",\n  \"subtotal\": 1500,\n  \"tax\": 150,\n  \"discount\": 0,\n  \"total\": 1650,\n  \"notes\": \"Thank you for your business.\",\n  \"status\": \"pending\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/receipts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "receipts"]
+            },
+            "description": "Create a new receipt. Required: clientName, clientEmail, issueDate, subtotal, total.\nReceipt number is auto-generated (format: RCPT-YYYY-0001).\n\nThe test script auto-saves the returned ID to `receiptId`."
+          }
+        },
+        {
+          "name": "GET /api/receipts/:id - Get Receipt by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/receipts/{{receiptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "receipts", "{{receiptId}}"]
+            },
+            "description": "Get a single receipt by ID. Uses the `receiptId` variable (auto-set by Create Receipt)."
+          }
+        },
+        {
+          "name": "PUT /api/receipts/:id - Update Receipt",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"Jane Doe\",\n  \"clientEmail\": \"jane@example.com\",\n  \"companyName\": \"Updated Corp\",\n  \"issueDate\": \"2024-01-20\",\n  \"dueDate\": \"2024-02-20\",\n  \"items\": \"[{\\\"description\\\":\\\"Consulting\\\",\\\"quantity\\\":2,\\\"rate\\\":500,\\\"amount\\\":1000}]\",\n  \"subtotal\": 1000,\n  \"tax\": 100,\n  \"discount\": 50,\n  \"total\": 1050,\n  \"notes\": \"Updated notes.\",\n  \"status\": \"paid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/receipts/{{receiptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "receipts", "{{receiptId}}"]
+            },
+            "description": "Update an existing receipt. All fields are optional (partial update)."
+          }
+        },
+        {
+          "name": "DELETE /api/receipts/:id - Delete Receipt",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/receipts/{{receiptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "receipts", "{{receiptId}}"]
+            },
+            "description": "Delete a receipt by ID. Returns { success: true } on success."
+          }
+        },
+        {
+          "name": "POST /api/receipts/:id/send-email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/receipts/{{receiptId}}/send-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "receipts", "{{receiptId}}", "send-email"]
+            },
+            "description": "Send receipt via email to the client. Updates receipt status to 'sent'."
+          }
+        },
+        {
+          "name": "GET /api/receipts/:id/pdf - Download PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/receipts/{{receiptId}}/pdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "receipts", "{{receiptId}}", "pdf"]
+            },
+            "description": "Generate and download receipt as PDF. Response will be a file download."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        {
+          "name": "GET /api/admin/audit - Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{sessionCookie}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "audit"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of results (1-200, default 50)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get audit logs ordered by createdAt descending. Returns { documents: [...], total: number }."
+          }
+        },
+        {
+          "name": "POST /api/admin/audit - Create Audit Log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"user.login\",\n  \"email\": \"admin@example.com\",\n  \"path\": \"/api/admin/auth/login\",\n  \"ip\": \"192.168.1.1\",\n  \"userAgent\": \"Mozilla/5.0\",\n  \"deviceType\": \"desktop\",\n  \"browser\": \"Chrome\",\n  \"os\": \"macOS\",\n  \"city\": \"New York\",\n  \"region\": \"NY\",\n  \"country\": \"US\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "audit"]
+            },
+            "description": "Manually create an audit log entry. Required: event, email. No auth required."
+          }
+        }
+      ]
+    }
+  ]
+}
